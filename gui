@@ -12,14 +12,18 @@ main() {
 
     model=$(phone_type)
     device_name=$(get_device_name)
-    yad --form --window-icon="phone" --image="phone" --image-on-top --center --no-buttons --homogeneous \
+    yad --form --window-icon="phone" --image="phone" --image-on-top --center --no-buttons \
         --title="$device_name" --width=300 --height=400 --text="<big><b>$device_name</b></big>\n$model" \
         --columns=1 --borders=10 \
         --field=":LBL" "" --field="<big><b>Quick Options</b></big>:LBL" "" \
+        --field="Browse Files!media-flash":FBTN "bash -c 'open_mtp_device'" \
         --field="Screen Mirror!phone":FBTN "bash -c 'screen_mirror'" \
         --field=":LBL" "" --field="<big><b>Network Options</b></big>:LBL" "" \
         --field="SIM Card Information!network-vpn":FBTN "bash -c 'sim_info_gui'" \
-        --field="Enable/Disable USB Tethering!network-wired":FBTN "bash -c 'enable_usb_tethering'"
+        --field="Enable/Disable USB Tethering!network-wired":FBTN "bash -c 'enable_usb_tethering'" \
+        --field=":LBL" "" --field="<big><b>Advanced</b></big>:LBL" "" \
+        --field="Import APK!mail-send-receive":FBTN "bash -c 'import_apk'" \
+        --field="About Phone!system-help":FBTN "bash -c 'phone_info'"
 }
 
 main

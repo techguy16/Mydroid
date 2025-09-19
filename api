@@ -72,4 +72,59 @@ enable_usb_tethering() {
     fi
 }
 
-export -f get_device_name screen_mirror sim_information sim_info_gui enable_usb_tethering
+open_mtp_device() {
+    adb -s "$adb_code" shell svc usb setFunctions mtp
+    while [ ! -d /run/user/1000/gvfs/*/* ]; do
+        echo "Awaiting user to allow access... Retrying in 1 second"
+        sleep 1
+    done
+
+    xdg-open /run/user/1000/gvfs/*/
+}
+
+import_apk() {
+    file=$(yad --file --center --width=800 --height=600 --title="Select APK file to import" \
+        --file-filter "Android Package Binaries | *.apk")
+    exval=$?
+    if [[ "$exval" != 0 ]]; then
+        exit 0
+    fi
+
+    if command -v aapt > /dev/null; then
+        packagename=$(aapt dump badging $file | grep "application-label:'" | awk -F"'" '{print $2}')
+    else
+        packagename=$(basename $file | sed -E 's/^(.{30}).*/\1/')
+    fi
+
+    (
+        echo "# Installing $packagename on $(get_device_name)"
+        adb -s "$adb_code" install "$file" | exit 1
+    ) | yad --title="Installing APK"--progress --pulsate --width="250" --center \
+            --auto-close --auto-kill --no-buttons --borders=10
+}
+
+phone_info() {
+    android_version=$(echo "$getprop" | grep 'ro.product.build.version.release\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    if [[ "$(phone_type)" == "Samsung"* ]] && [ "$android_version" -gt "8" ]; then
+        android_version+=" (One UI $(( $android_version - 8 )))"
+    fi
+    android_sdk=$(echo "$getprop" | grep 'ro.product.build.version.sdk\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    kernel_version=$(echo "$getprop" | grep 'ro.kernel.version' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+
+    cpu_name=$(echo "$getprop" | grep 'ro.hardware\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    gpu_name=$(adb -s "$adb_code" shell dumpsys SurfaceFlinger | grep GLES | tail -n1 | awk -F', ' '{print $2}')
+
+    yad --form --window-icon="phone" --image="phone" --title="$device_name" --center \
+        --image-on-top --no-buttons --title="About Phone" --width=300 \
+        --borders=10 --text="<big><b>About $(get_device_name)</b></big>" \
+        --field=":LBL" "" --field="<big><b>Software</b></big>:LBL" "" \
+        --field="<b>Android Version:</b> Android $android_version:LBL" "" \
+        --field="<b>SDK Level:</b> $android_sdk:LBL" "" \
+        --field="<b>Linux Kernel:</b> version $kernel_version:LBL" "" \
+        --field=":LBL" "" --field="<big><b>Hardware</b></big>:LBL" "" \
+        --field="<b>CPU:</b> $cpu_name:LBL" "" \
+        --field="<b>GPU:</b> $gpu_name:LBL" "" 
+}
+
+export -f get_device_name screen_mirror phone_type sim_information sim_info_gui 
+export -f enable_usb_tethering open_mtp_device import_apk phone_info
