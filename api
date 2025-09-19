@@ -1,0 +1,75 @@
+#!/bin/bash
+
+export adb_code=$(adb devices -l | sed -n 2p | awk '{print $1}')
+export getprop=$(adb -s "$adb_code" shell getprop)
+
+phone_connection_state() {
+    if [[ "$adb_code" != "" ]]; then
+        echo "Connected"
+    else
+        echo "Not Connected"
+    fi
+}
+
+phone_type() {
+    type=$(echo "$getprop" | grep ro.product.model | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    if [[ "$type" == "SM-"* ]]; then
+        echo "Samsung Galaxy $(echo $type | sed 's/SM-//')"
+    else
+        echo "$type"
+    fi
+}
+
+get_device_name() {
+    adb -s "$adb_code" shell settings get global device_name
+}
+
+screen_mirror() {
+    scrcpy --window-title="$(get_device_name)"
+}
+
+sim_information() {
+    operator1=""
+    operator2="" # some phones have dual-SIMs
+
+    operatorlist=$(echo "$getprop" | grep gsm.operator.alpha | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    operator1+="<b>SIM 1:</b>\nOperator: $(echo "$operatorlist" | awk -F',' '{print $1}')"
+    if [[ "$operatorlist" == *","* ]]; then operator2+="\n\n<b>SIM 2:</b>\nOperator: $(echo "$operatorlist" | awk -F',' '{print $2}')" 
+    fi
+
+    operatornumeric=$(echo "$getprop" | grep '\[gsm.operator.numeric' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    operator1+="\nMCC-MNC: $(echo "$operatornumeric" | awk -F',' '{print $1}')"
+    if [[ "$operatorlist" == *","* ]]; then operator2+="\nMCC-MNC: $(echo "$operatornumeric" | awk -F',' '{print $2}')" 
+    fi
+
+    operatorcountry=$(echo "$getprop" | grep '\[gsm.operator.iso-country' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    operator1+="\nCountry: $(echo "$operatorcountry" | awk -F',' '{print $1}' | tr '[:lower:]' '[:upper:]')"
+    if [[ "$operatorlist" == *","* ]]; then operator2+="\nCountry: $(echo "$operatorcountry" | awk -F',' '{print $2}' | tr '[:lower:]' '[:upper:]')" 
+    fi
+
+    operatorconnection=$(echo "$getprop" | grep 'gsm.network.type' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    operator1+="\nConnection Type: $(echo "$operatorconnection" | awk -F',' '{print $1}' | tr '[:lower:]' '[:upper:]')"
+    if [[ "$operatorlist" == *","* ]]; then operator2+="\nConnection Type: $(echo "$operatorconnection" | awk -F',' '{print $2}' | tr '[:lower:]' '[:upper:]')" 
+    fi
+
+    text="$operator1$operator2"
+    echo -e "$text"
+}
+
+sim_info_gui() {
+    yad --width=250 --title="SIM Card Info" --borders=10 \
+        --button="OK":0 --center --text="$(sim_information)"
+}
+
+enable_usb_tethering() {
+    if [[ "$(adb -s "$adb_code" shell getprop sys.usb.config)" != "rndis"* ]]; then
+        echo "Tethering"
+        adb -s "$adb_code" shell settings put global tether_dun_required 0
+        adb -s "$adb_code" shell svc usb setFunctions rndis
+    else
+        echo "Untethering"
+        adb -s "$adb_code" shell svc usb setFunctions mtp
+    fi
+}
+
+export -f get_device_name screen_mirror sim_information sim_info_gui enable_usb_tethering
