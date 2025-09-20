@@ -79,7 +79,7 @@ open_mtp_device() {
         sleep 1
     done
 
-    xdg-open /run/user/1000/gvfs/*/
+    xdg-open /run/user/1000/gvfs/*/ > /dev/null 2>&1
 }
 
 import_apk() {
@@ -137,7 +137,7 @@ phone_info() {
 
 list_packages() {
     pkgs=()
-    for i in $(adb shell cmd package list packages | sed 's/package://g'); do
+    for i in $(adb shell cmd package list packages | sed 's/package://g' | sort); do
         pkgs+=("$i")
     done
     yad --list --title="Installed Applications" --width=500 --height=500 \
