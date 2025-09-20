@@ -10,6 +10,15 @@ main() {
         exit 0
     fi
 
+    if [[ "$(is_dex_supported)" == "Yes" ]]; then
+        yadbuttons=("--field=Samsung DeX!video-display:FBTN" "bash -c 'samsung_dex'")
+    elif [[ "$(is_dex_supported)" == "Partially" ]]; then
+        yadbuttons=("--field=Desktop UI (DeX-like)!video-display:FBTN" "bash -c 'samsung_dex'")
+    else
+        yadbuttons=()
+    fi
+
+
     model=$(phone_type)
     device_name=$(get_device_name)
     yad --form --window-icon="phone" --image="phone" --image-on-top --center --no-buttons \
@@ -18,6 +27,7 @@ main() {
         --field=":LBL" "" --field="<big><b>Quick Options</b></big>:LBL" "" \
         --field="Browse Files!media-flash":FBTN "bash -c 'open_mtp_device'" \
         --field="Screen Mirror!phone":FBTN "bash -c 'screen_mirror'" \
+        "${yadbuttons[@]}" \
         --field=":LBL" "" --field="<big><b>Network Options</b></big>:LBL" "" \
         --field="SIM Card Information!network-vpn":FBTN "bash -c 'sim_info_gui'" \
         --field="Enable/Disable USB Tethering!network-wired":FBTN "bash -c 'enable_usb_tethering'" \

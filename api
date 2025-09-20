@@ -137,12 +137,31 @@ phone_info() {
 
 list_packages() {
     pkgs=()
-    for i in $(adb shell cmd package list packages | sed 's/package://g' | sort); do
+    for i in $(adb -s "$adb_code" shell cmd package list packages | sed 's/package://g' | sort); do
         pkgs+=("$i")
     done
     yad --list --title="Installed Applications" --width=500 --height=500 \
         --center --column="Package name" --no-buttons --no-headers "${pkgs[@]}"
 }
 
+is_dex_supported() {
+    if [[ "$(phone_type)" == "Samsung"* ]]; then
+        if [[ "$(echo "$getprop" | grep 'ro.build.product\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')" == "s"* ]]; then
+            echo "Yes"
+        elif [[ "$(echo "$getprop" | grep 'ro.build.product\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')" == "a"* ]]; then
+            echo "Partially"
+        else
+            echo "No"
+        fi
+    else
+        echo "No"
+    fi
+}
+
+samsung_dex() {
+    scrcpy --new-display=1920x1080/284 --window-title="$(get_device_name) - Desktop"
+}
+
 export -f get_device_name screen_mirror phone_type sim_information sim_info_gui 
 export -f enable_usb_tethering open_mtp_device import_apk phone_info list_packages
+export -f is_dex_supported samsung_dex
