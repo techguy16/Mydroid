@@ -38,8 +38,8 @@ sim_information() {
     fi
 
     operatornumeric=$(echo "$getprop" | grep '\[gsm.operator.numeric' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
-    operator1+="\nMCC-MNC: $(echo "$operatornumeric" | awk -F',' '{print $1}')"
-    if [[ "$operatorlist" == *","* ]]; then operator2+="\nMCC-MNC: $(echo "$operatornumeric" | awk -F',' '{print $2}')" 
+    operator1+="\nMCC-MNC: $(echo "$operatornumeric" | awk -F',' '{print $1}' | sed 's/^\(...\)/\1-/')"
+    if [[ "$operatorlist" == *","* ]]; then operator2+="\nMCC-MNC: $(echo "$operatornumeric" | awk -F',' '{print $2}' | sed 's/^\(...\)/\1-/')" 
     fi
 
     operatorcountry=$(echo "$getprop" | grep '\[gsm.operator.iso-country' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
@@ -105,14 +105,23 @@ import_apk() {
 
 phone_info() {
     android_version=$(echo "$getprop" | grep 'ro.product.build.version.release\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    if [[ "$android_version" == "" ]]; then
+        android_version=$(echo "$getprop" | grep 'ro.build.version.release\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    fi
     if [[ "$(phone_type)" == "Samsung"* ]] && [ "$android_version" -gt "8" ]; then
         android_version+=" (One UI $(( $android_version - 8 )))"
     fi
     android_sdk=$(echo "$getprop" | grep 'ro.product.build.version.sdk\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    if [[ "$android_sdk" == "" ]]; then
+        android_sdk=$(echo "$getprop" | grep 'ro.build.version.sdk\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    fi
     kernel_version=$(echo "$getprop" | grep 'ro.kernel.version' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
+    if [[ "$kernel_version" == "" ]]; then
+        kernel_version=$(adb -s "$adb_code" shell cat /proc/version | awk '{print $3}')
+    fi
 
     cpu_name=$(echo "$getprop" | grep 'ro.hardware\]' | awk -F': ' '{print $2}' | sed -e 's/^.//' -e 's/.$//')
-    gpu_name=$(adb -s "$adb_code" shell dumpsys SurfaceFlinger | grep GLES | tail -n1 | awk -F', ' '{print $2}')
+    gpu_name=$(adb -s "$adb_code" shell dumpsys SurfaceFlinger | grep "GLES:" | tail -n1 | awk -F', ' '{print $2}')
 
     yad --form --window-icon="phone" --image="phone" --title="$device_name" --center \
         --image-on-top --no-buttons --title="About Phone" --width=300 \
